@@ -13,6 +13,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.file.FileSystems;
+import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +29,29 @@ public class PhotoService {
 		this.standardHeight = standardHeight;
 	}
 
+	private String getDirectoryString(User user) {
+		String path = String.format("%s%s%s", root, FileSystems.getDefault().getSeparator(), user.getUsername());
+		return path;
+	}
+
+	private String getFileString(User user, String photoName) {
+		String path = String.format("%s%s%s", getDirectoryString(user),
+				FileSystems.getDefault().getSeparator(), photoName);
+		return path;
+	}
+
+	private void createUserDirectoryIfNotExist(User user)
+	{
+		String path = getDirectoryString(user);
+		File photoDir = new File(path);
+		if (!photoDir.exists())
+		{
+			photoDir.mkdir();
+		}
+	}
+
 	public List<Photo> listPhotos(User user) {
+		createUserDirectoryIfNotExist(user);
 		String path = String.format("%s%s%s", root, FileSystems.getDefault().getSeparator(), user.getUsername());
 		File photoDir = new File(path);
 		List<Photo> photos = new ArrayList<>();
@@ -38,12 +61,6 @@ public class PhotoService {
 			photos.add(photo);
 		}
 		return photos;
-	}
-
-	private String getFileString(User user, String photoName) {
-		String path = String.format("%s%s%s%s%s", root, FileSystems.getDefault().getSeparator(), user.getUsername(),
-				FileSystems.getDefault().getSeparator(), photoName);
-		return path;
 	}
 
 	public byte[] retrievePhotoImage(User user, String photoName) throws IOException {
@@ -75,10 +92,23 @@ public class PhotoService {
 	}
 
 	public void addPhoto(User user, String photoName, byte[] fileBtyes) throws IOException {
+		createUserDirectoryIfNotExist(user);
 		String path = getFileString(user, photoName);
 		File file = new File(path);
 		try (FileOutputStream outputStream = new FileOutputStream(file)) {
 			outputStream.write(fileBtyes);
+		}
+	}
+
+	public boolean deletePhoto(User user, String photoName) throws NoSuchFileException {
+		String path = getFileString(user, photoName);
+		File file = new File(path);
+		if (file.isFile()) {
+			boolean deleted = file.delete();
+			return deleted;
+		}
+		else {
+			throw new NoSuchFileException(String.format("File not found: %s", photoName));
 		}
 	}
 }
